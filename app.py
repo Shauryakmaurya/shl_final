@@ -30,7 +30,7 @@ if st.button("🔍 Recommend Assessments") and query.strip():
                 st.warning("Could not fetch content from URL")
 
         top_meta, top_docs = hybrid_search(query)
-        df = format_table(top_meta)  # now returns pandas DataFrame
+        df = format_table(top_meta)  # now returns DataFrame
 
         # Apply filters
         df = df[df["Duration (min)"].apply(lambda x: int(x) if str(x).isdigit() else 999) <= max_duration]
@@ -41,18 +41,15 @@ if st.button("🔍 Recommend Assessments") and query.strip():
         if search_filter:
             df = df[df.apply(lambda row: search_filter.lower() in row.astype(str).str.lower().str.cat(), axis=1)]
 
-        # Display DataFrame with white text fix
-        st.markdown("### 🔝 Filtered Matching Assessments")
-        st.markdown(
-            df.to_html(escape=False, index=False),
-            unsafe_allow_html=True
-        )
+        # ✅ Display DataFrame normally (auto dark-mode support)
+        st.subheader("🔝 Filtered Matching Assessments")
+        st.dataframe(df, use_container_width=True)
 
         # Download
         csv = df.to_csv(index=False)
         st.download_button("⬇️ Download Results as CSV", data=csv, file_name="recommended_assessments.csv", mime="text/csv")
 
-        # Build prompt and call LLaMA
+        # LLaMA output
         context = "\n\n".join(top_docs)
         prompt = f"Here is the context of available SHL tests:\n\n{context}\n\nBased on this, suggest the most relevant assessments for the following job description or query:\n{query}"
         llama_output = call_llama(prompt)
