@@ -1,60 +1,41 @@
 import streamlit as st
 import pandas as pd
-from Hybrid_Rag_Ui_Table import hybrid_search, call_llama, format_table
-import re
-import requests
-from io import StringIO
+from Hybrid_Rag_Ui_Table import query_rag_system, hybrid_search, format_table
+import base64
 
-# Load and configure
 st.set_page_config(page_title="SHL Assessment Recommender", layout="wide")
+st.markdown("""
+    <style>
+        .main { background-color: #0e1117; }
+        .stButton>button { color: white; background-color: #0099ff; }
+        .css-1cpxqw2 edgvbvh3 { background-color: #0e1117; }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("🧠 SHL Assessment Recommender (Hybrid RAG + LLaMA)")
 
-# Query input
-query = st.text_area("✍️ Enter Job Description, Query or JD Link", height=200)
+query = st.text_area("Enter job description, candidate profile, or query to get matching assessments:", height=200)
 
-# Filter options
-col1, col2, col3 = st.columns(3)
-max_duration = col1.slider("⏱️ Max Duration (min)", min_value=0, max_value=120, value=60)
-remote_only = col2.checkbox("🌐 Only show Remote Tests")
-adaptive_only = col3.checkbox("🧠 Only show Adaptive/IRT Tests")
-search_filter = st.text_input("🔎 Filter Results by Keyword (optional)")
+if st.button("🔍 Recommend Assessments"):
+    if query.strip():
+        with st.spinner("Searching and generating recommendations..."):
+            results, _ = hybrid_search(query)
+            if results:
+                st.markdown("""
+                <h2 style='margin-top: 40px;'>
+                    🔺 Filtered Matching Assessments
+                </h2>
+                """, unsafe_allow_html=True)
 
-# Action button
-if st.button("🔍 Recommend Assessments") and query:
-    with st.spinner("Running Hybrid Search and LLaMA..."):
-        # Optional: extract content from URL if provided
-        url_match = re.search(r'https?://\S+', query)
-        if url_match:
-            try:
-                page = requests.get(url_match.group(0), timeout=5)
-                query += f"\n\n[Page snippet]:\n{page.text[:3000]}"
-            except:
-                st.warning("Could not fetch content from URL")
+                html_table = format_table(results)
+                st.components.v1.html(html_table, height=500, scrolling=True)
 
-        # Hybrid search
-        top_meta, top_docs = hybrid_search(query)
-        df = format_table(top_meta)
-
-        # Apply filters
-        df = df[df["Duration (min)"].apply(lambda x: int(x) if str(x).isdigit() else 999) <= max_duration]
-        if remote_only:
-            df = df[df["Remote"] == "✅"]
-        if adaptive_only:
-            df = df[df["Adaptive/IRT"] == "✅"]
-        if search_filter:
-            df = df[df.apply(lambda row: search_filter.lower() in row.astype(str).str.lower().str.cat(), axis=1)]
-
-        st.subheader("🔝 Filtered Matching Assessments")
-        st.dataframe(df, use_container_width=True)
-
-        # Download button
-        csv = df.to_csv(index=False)
-        st.download_button("⬇️ Download Results as CSV", data=csv, file_name="recommended_assessments.csv", mime="text/csv")
-
-        # LLaMA final recommendation
-        context = "\n\n".join(top_docs)
-        prompt = f"Here is the context of available SHL tests:\n\n{context}\n\nBased on this, suggest the most relevant assessments for the following job description or query:\n{query}"
-        response = call_llama(prompt)
-
-        st.subheader("💡 LLaMA Recommendation")
-        st.write(response)
+                # Download as CSV
+                df = pd.DataFrame(results)
+                csv = df.to_csv(index=False)
+                b64 = base64.b64encode(csv.encode()).decode()
+                st.markdown(f'<a href="data:file/csv;base64,{b64}" download="matching_assessments.csv" class="button">⬇️ Download Results as CSV</a>', unsafe_allow_html=True)
+            else:
+                st.warning("No matching assessments found. Please try a different query.")
+    else:
+        st.warning("Please enter a query to get recommendations.")

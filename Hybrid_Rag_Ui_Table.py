@@ -87,7 +87,7 @@ def call_llama(prompt):
     data = {
         "model": "llama3-8b-8192",
         "messages": [
-            {"role": "system", "content": "You are an SHL test recommender. Suggest suitable assessments based on user input."},
+            {"role": "system", "content": "Assume you are a HR Professional. Now hirirng managers are hirirng candidates for different roles. You have to suggest them different test assignment based on job role and test type. Give maximum 10 and minimum 1 assignment and all the assignments should be releavent to job role"},
             {"role": "user", "content": prompt}
         ]
     }
@@ -98,12 +98,13 @@ def format_table(results):
     df = pd.DataFrame(results)
     df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
     df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
-    df["URL"] = df["url"].apply(lambda x: f"[Link]({x})")
-    return df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
+    df["URL"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Link</a>')
+    df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
         "title": "Title",
         "test_type": "Test Type",
         "duration": "Duration (min)"
     })
+    return df.to_html(escape=False, index=False)
 
 def query_rag_system(query):
     top_meta, top_docs = hybrid_search(query)
@@ -111,7 +112,7 @@ def query_rag_system(query):
     prompt = f"Here is the context of available SHL tests:\n\n{context}\n\nBased on this, suggest the most relevant assessments for the following job description or query:\n{query}"
     llama_response = call_llama(prompt)
     print("\nTop Matches:")
-    print(format_table(top_meta).to_markdown(index=False))
+    print(pd.read_html(format_table(top_meta))[0].to_markdown(index=False))
     print("\nLLaMA Suggestion:")
     print(llama_response)
 
