@@ -88,7 +88,11 @@ if st.button("🔍 Recommend Assessments") and query:
 
         # Apply filters
         df_filtered = df.copy()
-        df_filtered = df_filtered[df_filtered["Duration (min)"].apply(lambda x: int(x) if str(x).isdigit() else 999) <= max_duration]
+        # Convert duration safely
+        df_filtered["Duration (min)"] = pd.to_numeric(df_filtered["Duration (min)"], errors="coerce")
+        df_filtered = df_filtered[df_filtered["Duration (min)"].fillna(999) <= max_duration]
+
+        # df_filtered = df_filtered[df_filtered["Duration (min)"].apply(lambda x: int(x) if str(x).isdigit() else 999) <= max_duration]
         if remote_only:
             df_filtered = df_filtered[df_filtered["Remote"] == "✅"]
         if adaptive_only:
