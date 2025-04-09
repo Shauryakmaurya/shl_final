@@ -1,26 +1,25 @@
 import streamlit as st
 import pandas as pd
-from Hybrid_Rag_Ui_Table import hybrid_search, call_llama, format_table
 import re
 import requests
+from io import StringIO
+from App_Streamlit_Ui import query_rag_system, hybrid_search  # import your final canvas module
 
-# Configure page
 st.set_page_config(page_title="SHL Assessment Recommender", layout="wide")
 st.title("🧠 SHL Assessment Recommender (Hybrid RAG + LLaMA)")
 
-# Query input
-query = st.text_area("✍️ Enter Job Description, Query or JD Link", height=200)
+query = st.text_area("✍️ Enter Job Description or Assessment Query (or a Link to a JD)", height=200)
 
 # Filter controls
 col1, col2, col3 = st.columns(3)
 max_duration = col1.slider("⏱️ Max Duration (min)", 0, 120, 60)
-remote_only = col2.checkbox("🌐 Only show Remote Tests")
-adaptive_only = col3.checkbox("🧠 Only show Adaptive/IRT Tests")
+remote_only = col2.checkbox("🌐 Only Remote Tests")
+adaptive_only = col3.checkbox("🧠 Only Adaptive/IRT")
 search_filter = st.text_input("🔎 Filter Results by Keyword (optional)")
 
-if st.button("🔍 Recommend Assessments") and query.strip():
+if st.button("🔍 Recommend Assessments") and query:
     with st.spinner("Running Hybrid Search and LLaMA..."):
-        # Optional: fetch page content if URL in query
+        # If query has a URL, extract and append page content
         url_match = re.search(r'https?://\S+', query)
         if url_match:
             try:
@@ -29,30 +28,26 @@ if st.button("🔍 Recommend Assessments") and query.strip():
             except:
                 st.warning("Could not fetch content from URL")
 
-        top_meta, top_docs = hybrid_search(query)
-        df = format_table(top_meta)  # now returns DataFrame
+        results, llama_response = query_rag_system(query)
+        df = results.copy() if isinstance(results, pd.DataFrame) else pd.read_html(results, flavor='bs4')[0]  # Convert HTML table back to DataFrame
 
         # Apply filters
-        df = df[df["Duration (min)"].apply(lambda x: int(x) if str(x).isdigit() else 999) <= max_duration]
+        df_filtered = df.copy()
+        df_filtered = df_filtered[df_filtered["Duration (min)"].apply(lambda x: int(x) if str(x).isdigit() else 999) <= max_duration]
         if remote_only:
-            df = df[df["Remote"] == "✅"]
+            df_filtered = df_filtered[df_filtered["Remote"] == "✅"]
         if adaptive_only:
-            df = df[df["Adaptive/IRT"] == "✅"]
+            df_filtered = df_filtered[df_filtered["Adaptive/IRT"] == "✅"]
         if search_filter:
-            df = df[df.apply(lambda row: search_filter.lower() in row.astype(str).str.lower().str.cat(), axis=1)]
+            df_filtered = df_filtered[df_filtered.apply(lambda row: search_filter.lower() in row.astype(str).str.lower().str.cat(), axis=1)]
 
-        # ✅ Display DataFrame normally (auto dark-mode support)
-        st.subheader("🔝 Filtered Matching Assessments")
-        st.dataframe(df, use_container_width=True)
+        st.subheader("🔝 Top Matching Assessments")
+        st.dataframe(df_filtered, use_container_width=True)
 
-        # Download
-        csv = df.to_csv(index=False)
-        st.download_button("⬇️ Download Results as CSV", data=csv, file_name="recommended_assessments.csv", mime="text/csv")
+        # Download button
+        csv = df_filtered.to_csv(index=False).encode("utf-8")
+        st.download_button("⬇️ Download CSV", csv, "recommended_assessments.csv", "text/csv")
 
-        # LLaMA output
-        context = "\n\n".join(top_docs)
-        prompt = f"Here is the context of available SHL tests:\n\n{context}\n\nBased on this, suggest the most relevant assessments for the following job description or query:\n{query}"
-        llama_output = call_llama(prompt)
-
+        # LLaMA response
         st.subheader("💡 LLaMA Recommendation")
-        st.write(llama_output)
+        st.write(llama_response)
