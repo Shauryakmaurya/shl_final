@@ -116,15 +116,36 @@ def call_llama(prompt):
 #             "duration": "Duration (min)"
 #         })
 #         return df
+# def format_table(results):
+#     if not results:
+#         return pd.DataFrame()  # Return empty DataFrame if no results
+
+#     df = pd.DataFrame(results)
+#     df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
+#     df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
+#     df["URL"] = df["url"].apply(lambda x: f"https://{x}" if not x.startswith("http") else x)
+    
+#     df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
+#         "title": "Title",
+#         "test_type": "Test Type",
+#         "duration": "Duration (min)"
+#     })
+
+#     return df
 def format_table(results):
     if not results:
-        return pd.DataFrame()  # Return empty DataFrame if no results
+        return pd.DataFrame()
 
     df = pd.DataFrame(results)
+
+    # Check if necessary raw keys exist
+    if "remote_testing" not in df.columns or "adaptive_irt" not in df.columns:
+        return pd.DataFrame()  # return blank if malformed input
+
     df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
     df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
     df["URL"] = df["url"].apply(lambda x: f"https://{x}" if not x.startswith("http") else x)
-    
+
     df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
         "title": "Title",
         "test_type": "Test Type",
@@ -132,6 +153,7 @@ def format_table(results):
     })
 
     return df
+
 
 # def query_rag_system(query):
 #     # def format_table(results):
