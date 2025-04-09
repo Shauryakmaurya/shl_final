@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 import requests
 
 # Load data
-with open("testshl_data_cleaned1.json", "r") as f:
+with open("testshl_data_cleaned.json", "r") as f:
     shl_data = json.load(f)
 
 # Prepare corpus and metadata
