@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 import requests
 
 # Load data
-with open("testshl_data_cleaned.json", "r") as f:
+with open("testshl_data_cleaned1.json", "r") as f:
     shl_data = json.load(f)
 
 # Prepare corpus and metadata
@@ -87,34 +87,60 @@ def call_llama(prompt):
     data = {
         "model": "llama3-8b-8192",
         "messages": [
-            {"role": "system", "content": "Assume you are a HR Professional. Now hirirng managers are hirirng candidates for different roles. You have to suggest them different test assignment based on job role and test type. Give maximum 10 and minimum 1 assignment and all the assignments should be releavent to job role"},
+            {"role": "system", "content": "You are an SHL test recommender. Suggest suitable assessments based on user input."},
             {"role": "user", "content": prompt}
         ]
     }
     response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
     return response.json()["choices"][0]["message"]["content"]
 
+# def format_table(results):
+#     df = pd.DataFrame(results)
+#     df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
+#     df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
+#     df["URL"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank" style="color: #4fa3f7; text-decoration: underline">Link</a>')
+#     df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
+#         "title": "Title",
+#         "test_type": "Test Type",
+#         "duration": "Duration (min)"
+#     })
+#     return df.to_html(escape=False, index=False, classes="styled-table")
 def format_table(results):
-    df = pd.DataFrame(results)
-    df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
-    df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
-    df["URL"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Link</a>')
-    df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
-        "title": "Title",
-        "test_type": "Test Type",
-        "duration": "Duration (min)"
-    })
-    return df.to_html(escape=False, index=False)
+        df = pd.DataFrame(results)
+        df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
+        df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
+        df["URL"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank" style="color:#4fa3f7;text-decoration:underline;">Link</a>')
+        df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
+            "title": "Title",
+            "test_type": "Test Type",
+            "duration": "Duration (min)"
+        })
+        return df
 
 def query_rag_system(query):
+    # def format_table(results):
+    #     df = pd.DataFrame(results)
+    #     df["Remote"] = df["remote_testing"].apply(lambda x: "✅" if x else "❌")
+    #     df["Adaptive/IRT"] = df["adaptive_irt"].apply(lambda x: "✅" if x else "❌")
+    #     df["URL"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank" style="color:#4fa3f7;text-decoration:underline;">Link</a>')
+    #     df = df[["title", "test_type", "duration", "Remote", "Adaptive/IRT", "URL"]].rename(columns={
+    #         "title": "Title",
+    #         "test_type": "Test Type",
+    #         "duration": "Duration (min)"
+    #     })
+    #     return df
+
     top_meta, top_docs = hybrid_search(query)
     context = "\n\n".join(top_docs)
     prompt = f"Here is the context of available SHL tests:\n\n{context}\n\nBased on this, suggest the most relevant assessments for the following job description or query:\n{query}"
     llama_response = call_llama(prompt)
     print("\nTop Matches:")
-    print(pd.read_html(format_table(top_meta))[0].to_markdown(index=False))
+    print(format_table(top_meta).to_markdown(index=False))
+
+    # print(pd.read_html(format_table(top_meta))[0].to_markdown(index=False))
     print("\nLLaMA Suggestion:")
     print(llama_response)
+    return format_table(top_meta), llama_response
 
 # Example usage
 # query_rag_system("Looking for a test to assess civil engineering graduates with aptitude in transportation and water resources")
