@@ -56,7 +56,7 @@ import pandas as pd
 import re
 import requests
 from io import StringIO
-from Hybrid_Rag_Ui_Table import query_rag_system, hybrid_search  # import your final canvas module
+from App_Streamlit_Ui import query_rag_system, hybrid_search  # import your final canvas module
 
 st.set_page_config(page_title="SHL Assessment Recommender", layout="wide")
 st.title("🧠 SHL Assessment Recommender (Hybrid RAG + LLaMA)")
@@ -82,6 +82,8 @@ if st.button("🔍 Recommend Assessments") and query:
                 st.warning("Could not fetch content from URL")
 
         results, llama_response = query_rag_system(query)
+        st.write("🧠 DEBUG: raw results from query_rag_system")
+        st.write(results)
         df = results.copy()  # Ensure it's a DataFrame
 
         # Apply filters
