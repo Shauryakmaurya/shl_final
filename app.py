@@ -100,8 +100,17 @@ if st.button("🔍 Recommend Assessments") and query:
         if search_filter:
             df_filtered = df_filtered[df_filtered.apply(lambda row: search_filter.lower() in row.astype(str).str.lower().str.cat(), axis=1)]
 
-        st.subheader("🔝 Top Matching Assessments")
-        st.dataframe(df_filtered, use_container_width=True)
+        # st.subheader("🔝 Top Matching Assessments")
+        # st.dataframe(df_filtered, use_container_width=True)
+        # Create clickable links in the URL column
+        df_filtered["URL"] = df_filtered["URL"].apply(lambda url: f'<a href="{url}" target="_blank">🔗 Link</a>')
+
+        st.markdown("#### 🔝 Top Matching Assessments (Clickable Links)")
+        st.write(
+            df_filtered.to_html(escape=False, index=False),
+            unsafe_allow_html=True
+)
+
 
         # Download button
         csv = df_filtered.to_csv(index=False).encode("utf-8")
