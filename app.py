@@ -81,11 +81,7 @@ if st.button("🔍 Recommend Assessments") and query:
             except:
                 st.warning("Could not fetch content from URL")
 
-        results, llama_response = query_rag_system(query)
-        st.write("🧠 DEBUG: raw results from query_rag_system")
-        st.write(results)
-        df = results.copy()  # Ensure it's a DataFrame
-
+        
         # Apply filters
         df_filtered = df.copy()
         # Convert duration safely
